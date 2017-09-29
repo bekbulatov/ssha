@@ -1,7 +1,8 @@
 from __future__ import print_function
 
-import errno
 import os
+import shlex
+import subprocess
 
 from . import config
 
@@ -21,12 +22,15 @@ def _get_address(instance_ip):
         return instance_ip
 
 
-def connect(instance, bastion):
+def connect(instance, bastion, cmd):
 
     command = ['ssh']
 
     if config.get('verbose'):
         command += ['-v']
+
+    if cmd:
+        command += ['-t']
 
     user_known_hosts_file = config.get('ssh.user_known_hosts_file')
     if user_known_hosts_file:
@@ -41,8 +45,11 @@ def connect(instance, bastion):
     instance_ip = get_ip(instance, connect_through_bastion=bool(bastion))
     command += [_get_address(instance_ip)]
 
+    if cmd:
+        command += shlex.split(cmd)
+
     print('[ssha] running {}'.format(format_command(command)))
-    run(command)
+    subprocess.call(command)
 
 
 def format_command(command):
@@ -59,25 +66,3 @@ def get_ip(instance, connect_through_bastion):
     if connect_through_bastion:
         return instance['PrivateIpAddress']
     return instance.get('PublicIpAddress') or instance['PrivateIpAddress']
-
-
-def run(command):
-    child_pid = os.fork()
-    if child_pid == 0:
-        os.execlp(command[0], *command)
-    else:
-        while True:
-            try:
-                os.waitpid(child_pid, 0)
-            except OSError as error:
-                if error.errno == errno.ECHILD:
-                    # No child processes.
-                    # It has exited already.
-                    break
-                elif error.errno == errno.EINTR:
-                    # Interrupted system call.
-                    # This happens when resizing the terminal.
-                    pass
-                else:
-                    # An actual error occurred.
-                    raise

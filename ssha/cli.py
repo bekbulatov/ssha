@@ -12,6 +12,7 @@ def main():
         parser.add_argument('config', nargs='?', help='Configuration name')
         parser.add_argument('search', nargs='?', help='Instance search string')
         parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+        parser.add_argument('-c', '--command', help='command to run')
         parser.add_argument('--settings', help='Path to the .ssha file')
         parser.add_argument('--version', action='store_true', help='show the installed version and exit')
 
@@ -36,7 +37,7 @@ def main():
             if config.get('ssm'):
                 ssm.send_command(instance, bastion)
 
-            ssh.connect(instance, bastion)
+            ssh.connect(instance, bastion, args.command)
 
         else:
             print('[ssha] no matching instances found')
